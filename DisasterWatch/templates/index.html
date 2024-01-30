@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Disaster Watch</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"/>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        #mapid { height: 600px; }
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #e9ecef;
+            font-family: Arial, sans-serif;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.1em;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .header button {
+            font-size: 1.2em;
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .header button:hover {
+            background-color: #0056b3;
+        }
+        .header textarea {
+            width: 80%;
+            height: 100px;
+            padding: 10px;
+            font-size: 1.2em;
+        }
+
+        .content {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px;
+        }
+        .commentary, #mapid {
+            flex-basis: 45%;  /* Adjust as needed to provide space for margins, padding, etc. */
+        }
+        #mapid {
+            height: 600px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Disaster watch</h1>
+        <p>Input the disaster to visualise.</p>
+        <form id="disaster-form">
+            <textarea id="disaster-input" placeholder="Enter your Prompt"></textarea>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+
+    <div class="content">
+        <div class="commentary">
+            <h2>Information</h2>
+            <div id="commentary" style="padding: 10px; margin: 10px; border: 1px solid #ddd; border-radius: 5px; background: #f8f9fa;"></div>
+        </div>
+        <div id="mapid"></div>
+    </div>
+
+    <script>
+        // Create the map and a group to hold the markers
+        var mymap = L.map('mapid');
+        var markers = L.layerGroup().addTo(mymap);
+
+        document.getElementById('disaster-form').addEventListener('submit', function(event) {
+            // Prevent the form from being submitted normally
+            event.preventDefault();
+
+            // Get the text from the input box
+            var disasterIdea = document.getElementById('disaster-input').value;
+
+            // Send the text to your new Flask endpoint
+            fetch('/getdisasterDataFromIdea', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ idea: disasterIdea })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Clear existing markers
+                markers.clearLayers();
+
+                // Insert the commentary into the new textarea
+                document.getElementById('commentary').innerText = data.commentary;
+
+                // Set the view to the first location in the returned data
+                mymap.setView([parseFloat(data.locations_data[0].latitude), parseFloat(data.locations_data[0].longitude)], 8);
+
+                // Set the tile layer
+                L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWlsc29uaTIwMSIsImEiOiJjbGVma203M2kwaHllM3JtdnNuODlsazY1In0.JBnsmC5BGpr6MzoYa_IJow', {
+                    maxZoom: 19,
+                    id: 'mapbox/streets-v11', // Here you can change the map style
+                    tileSize: 512,
+                    zoomOffset: -1,
+                }).addTo(mymap);
+
+                // Add new markers
+                data.locations_data.forEach(item => {
+                    var marker = L.marker([parseFloat(item.latitude), parseFloat(item.longitude)]).addTo(markers);
+                    marker.bindPopup(`<b>${item.location}</b>`);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

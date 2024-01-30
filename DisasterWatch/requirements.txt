@@ -1,0 +1,4 @@
+Flask==2.3.2
+geopy==2.4.0
+openai==0.28.1
+python-dotenv==1.0.0
